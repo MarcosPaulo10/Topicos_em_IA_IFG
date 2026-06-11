@@ -1,0 +1,23 @@
+Documentacao/
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+backend/data/
+backend/temp/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/renderer/dist/
+frontend/renderer/public/pdfjs/
+frontend/dist/
+frontend/.env.development.local
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+*.log

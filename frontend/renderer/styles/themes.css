@@ -1,0 +1,107 @@
+/* Museum — ref: green-museum (#E6E3D6, stone-900, editorial) */
+[data-theme="museum"] {
+  --font-heading: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-body: "DM Sans", system-ui, sans-serif;
+
+  --bg-app: #e6e3d6;
+  --bg-sidebar: #1c1917;
+  --bg-main: #eae8de;
+  --bg-surface: #f5f3eb;
+  --bg-user: #292524;
+  --bg-assistant: #ffffff;
+  --bg-composer: #ffffff;
+  --bg-input: #faf9f5;
+
+  --text: #1c1917;
+  --text-muted: #78716c;
+  --text-sidebar: #e6e3d6;
+  --text-sidebar-muted: #a8a29e;
+  --text-on-accent: #fafaf9;
+
+  --accent: #44403c;
+  --accent-hover: #292524;
+  --accent-soft: rgba(41, 37, 36, 0.12);
+  --border: rgba(28, 25, 23, 0.12);
+  --border-strong: rgba(28, 25, 23, 0.22);
+  --shadow: 0 8px 32px rgba(28, 25, 23, 0.08);
+  --shadow-composer: 0 -4px 24px rgba(28, 25, 23, 0.06);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --radius-pill: 999px;
+  --glass: none;
+  --backdrop: none;
+  --gradient-accent: linear-gradient(135deg, #44403c, #57534e);
+  --welcome-bg: rgba(255, 255, 255, 0.55);
+}
+
+/* Glass — ref: glass-effect2 (#050a14, glass panels, cyan) */
+[data-theme="glass"] {
+  --font-heading: "Space Grotesk", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --bg-app: #050a14;
+  --bg-sidebar: rgba(255, 255, 255, 0.03);
+  --bg-main: #050a14;
+  --bg-surface: rgba(255, 255, 255, 0.04);
+  --bg-user: linear-gradient(135deg, #007bff, #06b6d4);
+  --bg-assistant: rgba(255, 255, 255, 0.06);
+  --bg-composer: rgba(255, 255, 255, 0.05);
+  --bg-input: rgba(255, 255, 255, 0.04);
+
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-sidebar: #e2e8f0;
+  --text-sidebar-muted: #64748b;
+  --text-on-accent: #ffffff;
+
+  --accent: #007bff;
+  --accent-hover: #0066d6;
+  --accent-soft: rgba(0, 123, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --shadow-composer: 0 -8px 40px rgba(0, 0, 0, 0.35);
+  --radius: 16px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+  --glass: blur(16px) saturate(180%);
+  --backdrop: rgba(255, 255, 255, 0.03);
+  --gradient-accent: linear-gradient(135deg, #007bff, #22d3ee);
+  --welcome-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* Future — ref: futureui (#E6E6E6, orange-400, Oswald) */
+[data-theme="future"] {
+  --font-heading: "Oswald", system-ui, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+
+  --bg-app: #e6e6e6;
+  --bg-sidebar: #171717;
+  --bg-main: #f0f0f0;
+  --bg-surface: #ffffff;
+  --bg-user: #fb923c;
+  --bg-assistant: #ffffff;
+  --bg-composer: #ffffff;
+  --bg-input: #fafafa;
+
+  --text: #171717;
+  --text-muted: #737373;
+  --text-sidebar: #fafafa;
+  --text-sidebar-muted: #a3a3a3;
+  --text-on-accent: #171717;
+
+  --accent: #fb923c;
+  --accent-hover: #f97316;
+  --accent-soft: rgba(251, 146, 60, 0.18);
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --shadow: 0 12px 40px rgba(23, 23, 23, 0.1);
+  --shadow-composer: 0 -6px 30px rgba(23, 23, 23, 0.08);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 999px;
+  --glass: none;
+  --backdrop: none;
+  --gradient-accent: linear-gradient(180deg, #fdba74, #fb923c);
+  --welcome-bg: rgba(255, 255, 255, 0.85);
+}
