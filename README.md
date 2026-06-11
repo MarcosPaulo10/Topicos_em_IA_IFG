@@ -1,18 +1,17 @@
 # Assistente de IA Local
 
-**Fase atual:** v2.0 — Chat com PDF
-
-Aplicativo desktop para conversar com Phi-3 / LLaMA 3 localmente, com memória persistente e suporte a PDF.
+**Fase atual:** v3.0 — Chat com PDF + Áudio
 
 ---
 
 ## Pré-requisitos
 
-Python 3.11+, Node.js 20+, Ollama, Git.
+Python 3.11+, Node.js 20+, Ollama, **FFmpeg**, Git.
 
 ```powershell
 ollama pull phi3
 ollama pull llama3
+winget install Gyan.FFmpeg
 ```
 
 ---
@@ -41,29 +40,23 @@ npm run dev
 
 ---
 
-## Funcionalidades — Fase 1
+## Funcionalidades — Fases 1–3
 
-- Chat local, memória SQLite, sidebar, seletor de modelo, 3 temas
+- Fase 1: chat local, memória SQLite, sidebar, modelos Phi-3 / LLaMA 3
+- Fase 2: upload de PDF (PDF.js no frontend)
+- Fase 3: upload de áudio `.mp3` / `.mp4`, transcrição Whisper no backend
 
-## Funcionalidades — Fase 2
+### Fluxo áudio
 
-- Upload de PDF (extração local com PDF.js)
-- Badge com páginas e palavras
-- Limite de 10 páginas + truncamento
-- Contexto do PDF no prompt da IA
-- Ícone de PDF na sidebar
-
-### Fluxo PDF
-
-1. Clipe ou arraste um PDF
-2. Aguarde a extração
-3. Envie uma pergunta sobre o documento
+1. Ícone de microfone ou arraste `.mp3` / `.mp4`
+2. **Transcrever** → aguarde (CPU pode demorar)
+3. Envie a pergunta sobre a transcrição
 
 ---
 
 ## Tags
 
 ```powershell
-git tag v2.0
+git tag v3.0
 git push origin --tags
 ```

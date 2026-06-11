@@ -1,4 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import { formatDuration } from "../utils/formatDuration.js";
+import { languageLabel } from "../utils/languageLabels.js";
 
 function formatTime(dateStr) {
   const date = new Date(dateStr);
@@ -6,14 +8,25 @@ function formatTime(dateStr) {
 }
 
 function MessageAttachment({ attachment }) {
-  if (!attachment || attachment.type !== "pdf") return null;
+  if (!attachment) return null;
+
+  const icons = { pdf: "PDF", audio: "ÁUDIO", video: "VÍDEO" };
+  const icon = icons[attachment.type];
+  if (!icon) return null;
+
+  const isPdf = attachment.type === "pdf";
+  const isMedia = attachment.type === "audio" || attachment.type === "video";
+  const duration = formatDuration(attachment.durationSeconds);
+
   return (
     <div className="message-attachment">
-      <span className="message-attachment-icon">PDF</span>
+      <span className="message-attachment-icon">{icon}</span>
       <div className="message-attachment-info">
         <span className="message-attachment-name">{attachment.filename}</span>
         <span className="message-attachment-meta">
-          {attachment.pageCount != null && `${attachment.pageCount} páginas`}
+          {isPdf && attachment.pageCount != null && `${attachment.pageCount} páginas`}
+          {isMedia && attachment.language && languageLabel(attachment.language)}
+          {duration && ` · ${duration}`}
           {attachment.wordCount != null &&
             ` · ${attachment.wordCount.toLocaleString("pt-BR")} palavras`}
         </span>
@@ -30,7 +43,11 @@ export default function MessageBubble({ role, content, created_at, attachment })
       {!isUser && <div className="avatar">IA</div>}
       <div className="bubble-content">
         {attachment && <MessageAttachment attachment={attachment} />}
-        {isUser ? <p>{content}</p> : <ReactMarkdown>{content}</ReactMarkdown>}
+        {isUser ? (
+          <p>{content}</p>
+        ) : (
+          <ReactMarkdown>{content}</ReactMarkdown>
+        )}
         <span className="message-time">{formatTime(created_at)}</span>
       </div>
     </div>

@@ -1,5 +1,11 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
+export async function checkHealth() {
+  const res = await fetch(`${API_BASE}/health`);
+  if (!res.ok) throw new Error("Backend indisponível");
+  return res.json();
+}
+
 export async function getSessions() {
   const res = await fetch(`${API_BASE}/sessions`);
   if (!res.ok) throw new Error("Erro ao carregar sessões");
@@ -29,7 +35,7 @@ export async function setSessionContext(sessionId, { contextText, contextFilenam
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.detail || "Erro ao salvar contexto");
+    throw new Error(data.detail || "Erro ao salvar contexto do PDF");
   }
   return res.json();
 }
@@ -39,11 +45,55 @@ export async function clearSessionContext(sessionId) {
   if (!res.ok && res.status !== 204) throw new Error("Erro ao remover contexto");
 }
 
-export async function sendChat({ sessionId, message, model, contextText, contextFilename, contextType }) {
+export async function transcribeAudio(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 600000);
+
+  try {
+    const res = await fetch(`${API_BASE}/transcribe`, {
+      method: "POST",
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      const detail = typeof data.detail === "string" ? data.detail : "Erro ao transcrever áudio";
+      throw new Error(detail);
+    }
+
+    return data;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("Transcrição demorou demais. Tente um áudio mais curto.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function sendChat({
+  sessionId,
+  message,
+  model,
+  contextText,
+  contextFilename,
+  contextType,
+}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
 
-  const body = { session_id: sessionId, message, model };
+  const body = {
+    session_id: sessionId,
+    message,
+    model,
+  };
+
   if (contextText) {
     body.context_text = contextText;
     body.context_filename = contextFilename;
@@ -57,8 +107,14 @@ export async function sendChat({ sessionId, message, model, contextText, context
       body: JSON.stringify(body),
       signal: controller.signal,
     });
+
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.detail || "Erro ao enviar mensagem");
+
+    if (!res.ok) {
+      const detail = data.detail || "Erro ao enviar mensagem";
+      throw new Error(detail);
+    }
+
     return data;
   } catch (err) {
     if (err.name === "AbortError") {

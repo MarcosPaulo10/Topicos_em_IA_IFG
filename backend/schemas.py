@@ -68,3 +68,14 @@ class SessionContextResponse(BaseModel):
     context_type: str
     context_filename: str | None
     message: str = "Contexto atualizado"
+
+
+class TranscribeResponse(BaseModel):
+    text: str
+    language: str
+    filename: str
+    word_count: int
+    duration_seconds: float = 0.0
+    truncated: bool = False
+    warning: str | None = None
+    preview_lines: list[str] = Field(default_factory=list)
