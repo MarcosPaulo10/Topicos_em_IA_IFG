@@ -32,7 +32,6 @@ from llm import (
 )
 from memory import build_messages_array
 import transcription
-import video
 from schemas import (
     ChatRequest,
     ChatResponse,
@@ -49,7 +48,7 @@ load_dotenv()
 
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 
-app = FastAPI(title="Assistente IA Local", version="1.0.0")
+app = FastAPI(title="Assistente IA Local", version="3.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -58,7 +57,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -261,78 +259,6 @@ async def transcribe_audio_endpoint(file: UploadFile = File(...)):
         filename=filename,
         word_count=result["word_count"],
         duration_seconds=result["duration_seconds"],
-        truncated=result["truncated"],
-        warning=result["warning"],
-        preview_lines=result["preview_lines"],
-    )
-
-
-@app.post("/transcribe-video", response_model=TranscribeResponse)
-async def transcribe_video_endpoint(file: UploadFile = File(...)):
-    if not transcription.is_whisper_ready():
-        transcription.load_whisper_model()
-    if not transcription.is_whisper_ready():
-        raise HTTPException(
-            status_code=503,
-            detail="Serviço de transcrição indisponível. Verifique Whisper e FFmpeg.",
-        )
-
-    filename = file.filename or "video.mp4"
-    ext = Path(filename).suffix.lower()
-    if ext != video.VIDEO_EXTENSION:
-        raise HTTPException(
-            status_code=400,
-            detail="Formato não suportado. Use .mp4",
-        )
-
-    content = await file.read()
-    if len(content) > video.MAX_VIDEO_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail="Arquivo muito grande. Máximo de 500 MB.",
-        )
-    if not content:
-        raise HTTPException(status_code=422, detail="Arquivo de vídeo vazio.")
-
-    temp_video_path = transcription.save_temp_file(filename, content)
-    audio_path = None
-    video_deleted = False
-
-    try:
-        video_duration = await asyncio.to_thread(video.get_video_duration, temp_video_path)
-
-        audio_path = await asyncio.to_thread(video.extract_audio_from_video, temp_video_path)
-        transcription.delete_temp_file(temp_video_path)
-        video_deleted = True
-
-        result = await asyncio.to_thread(transcription.transcribe_audio, audio_path)
-    except RuntimeError as exc:
-        msg = str(exc)
-        if "FFmpeg" in msg:
-            raise HTTPException(status_code=500, detail=msg) from exc
-        if "indisponível" in msg:
-            raise HTTPException(status_code=503, detail=msg) from exc
-        raise HTTPException(status_code=422, detail=msg) from exc
-    except Exception as exc:
-        logger.exception("Erro ao processar vídeo")
-        raise HTTPException(
-            status_code=422,
-            detail="Não foi possível processar o arquivo de vídeo.",
-        ) from exc
-    finally:
-        if not video_deleted:
-            transcription.delete_temp_file(temp_video_path)
-        if audio_path is not None:
-            transcription.delete_temp_file(audio_path)
-
-    duration = video_duration or result.get("duration_seconds", 0)
-
-    return TranscribeResponse(
-        text=result["text"],
-        language=result["language"],
-        filename=filename,
-        word_count=result["word_count"],
-        duration_seconds=duration,
         truncated=result["truncated"],
         warning=result["warning"],
         preview_lines=result["preview_lines"],

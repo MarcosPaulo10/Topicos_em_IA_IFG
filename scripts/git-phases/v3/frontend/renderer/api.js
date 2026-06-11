@@ -45,45 +45,6 @@ export async function clearSessionContext(sessionId) {
   if (!res.ok && res.status !== 204) throw new Error("Erro ao remover contexto");
 }
 
-export function transcribeVideo(file, { onUploadProgress } = {}) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    const formData = new FormData();
-    formData.append("file", file);
-
-    xhr.upload.addEventListener("progress", (e) => {
-      if (e.lengthComputable && e.total > 0) {
-        onUploadProgress?.(e.loaded / e.total);
-      }
-    });
-
-    xhr.addEventListener("load", () => {
-      let data = {};
-      try {
-        data = JSON.parse(xhr.responseText || "{}");
-      } catch {
-        data = {};
-      }
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(data);
-        return;
-      }
-      const detail =
-        typeof data.detail === "string" ? data.detail : "Erro ao processar vídeo";
-      reject(new Error(detail));
-    });
-
-    xhr.addEventListener("error", () => reject(new Error("Falha no envio do vídeo")));
-    xhr.addEventListener("timeout", () =>
-      reject(new Error("Processamento demorou demais. Tente um vídeo mais curto.")),
-    );
-
-    xhr.open("POST", `${API_BASE}/transcribe-video`);
-    xhr.timeout = 900000;
-    xhr.send(formData);
-  });
-}
-
 export async function transcribeAudio(file) {
   const formData = new FormData();
   formData.append("file", file);

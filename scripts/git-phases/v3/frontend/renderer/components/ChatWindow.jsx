@@ -32,8 +32,8 @@ export default function ChatWindow({
             <div className="welcome-card">
               <h2>Bem-vindo</h2>
               <p>
-                Converse com LLaMA 3 ou Phi-3 localmente. Anexe PDF, áudio (.mp3) ou
-                vídeo (.mp4) para perguntar sobre o conteúdo.
+                Converse com LLaMA 3 ou Phi-3 localmente. Anexe PDF ou áudio (.mp3)
+                para perguntar sobre o conteúdo.
               </p>
               <div className="suggestions">
                 {SUGGESTIONS.map((s) => (

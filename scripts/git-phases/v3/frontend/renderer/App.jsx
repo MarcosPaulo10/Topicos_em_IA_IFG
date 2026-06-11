@@ -117,9 +117,7 @@ export default function App() {
 
       let loadedMessages = data.messages;
       if (
-        (data.context_type === "pdf" ||
-          data.context_type === "audio" ||
-          data.context_type === "video") &&
+        (data.context_type === "pdf" || data.context_type === "audio") &&
         data.context_filename
       ) {
         loadedMessages = enrichMessagesWithContextAttachment(
@@ -214,19 +212,6 @@ export default function App() {
     });
   };
 
-  const handleVideoTranscribed = (payload) => {
-    applyContextReady({
-      type: "video",
-      text: payload.text,
-      filename: payload.filename,
-      wordCount: payload.wordCount,
-      language: payload.language,
-      previewLines: payload.previewLines,
-      warning: payload.warning,
-      durationSeconds: payload.durationSeconds,
-    });
-  };
-
   const handleRemoveContext = async () => {
     if (contextCommitted) return;
 
@@ -243,12 +228,7 @@ export default function App() {
   };
 
   const handleSendMessage = async (text) => {
-    if (
-      contextStatus === "loading" ||
-      contextStatus === "transcribing" ||
-      contextStatus === "uploading" ||
-      contextStatus === "extracting"
-    ) {
+    if (contextStatus === "loading" || contextStatus === "transcribing") {
       return;
     }
 
@@ -365,28 +345,10 @@ export default function App() {
     }
   };
 
-  const handleVideoProgress = (msg) => {
-    if (msg) {
-      if (msg.startsWith("Enviando")) setContextStatus("uploading");
-      else if (msg.includes("Etapa 1")) setContextStatus("extracting");
-      else setContextStatus("transcribing");
-      setStatusMessage(msg);
-    } else if (
-      contextStatus === "uploading" ||
-      contextStatus === "extracting" ||
-      contextStatus === "transcribing"
-    ) {
-      setContextStatus("idle");
-      setStatusMessage(null);
-    }
-  };
-
   const inputDisabled =
     isLoading ||
     contextStatus === "loading" ||
-    contextStatus === "transcribing" ||
-    contextStatus === "uploading" ||
-    contextStatus === "extracting";
+    contextStatus === "transcribing";
 
   const pendingAttachment =
     !contextCommitted && contextStatus === "ready" && contextFilename
@@ -415,7 +377,7 @@ export default function App() {
         <header className="chat-header">
           <div className="chat-header-left">
             <h1>Assistente IA Local</h1>
-            <p>{activeTheme?.hint || "Chat local com Ollama"} · Fase 4: PDF + Áudio + Vídeo</p>
+            <p>{activeTheme?.hint || "Chat local com Ollama"} · Fase 3: PDF + Áudio</p>
           </div>
           <div className="header-controls">
             <ThemeSelector />
@@ -442,11 +404,9 @@ export default function App() {
           pendingAttachment={pendingAttachment}
           onPdfExtracted={handlePdfExtracted}
           onAudioTranscribed={handleAudioTranscribed}
-          onVideoTranscribed={handleVideoTranscribed}
           onRemoveContext={handleRemoveContext}
           onPdfProgress={handlePdfProgress}
           onAudioProgress={handleAudioProgress}
-          onVideoProgress={handleVideoProgress}
         />
       </main>
     </div>

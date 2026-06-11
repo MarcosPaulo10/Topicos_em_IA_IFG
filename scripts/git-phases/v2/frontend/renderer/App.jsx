@@ -14,33 +14,18 @@ import {
   setSessionContext,
 } from "./api.js";
 
-function enrichMessagesWithContextAttachment(
-  messages,
-  contextType,
-  contextFilename,
-  contextText,
-  extra = {},
-) {
+function enrichMessagesWithPdfAttachment(messages, contextFilename, contextText) {
   if (!contextFilename || !messages?.length) return messages;
-
   const firstUserIdx = messages.findIndex((m) => m.role === "user");
   if (firstUserIdx < 0) return messages;
-
   const wordCount = contextText
     ? contextText.split(/\s+/).filter(Boolean).length
-    : extra.wordCount ?? null;
-
+    : null;
   return messages.map((m, i) => {
     if (i !== firstUserIdx || m.attachment) return m;
     return {
       ...m,
-      attachment: {
-        type: contextType,
-        filename: contextFilename,
-        wordCount,
-        language: extra.language,
-        durationSeconds: extra.durationSeconds,
-      },
+      attachment: { type: "pdf", filename: contextFilename, wordCount },
     };
   });
 }
@@ -58,12 +43,8 @@ export default function App() {
 
   const [contextText, setContextText] = useState("");
   const [contextFilename, setContextFilename] = useState("");
-  const [contextKind, setContextKind] = useState(null);
   const [contextPageCount, setContextPageCount] = useState(null);
   const [contextWordCount, setContextWordCount] = useState(null);
-  const [contextLanguage, setContextLanguage] = useState(null);
-  const [contextPreviewLines, setContextPreviewLines] = useState([]);
-  const [contextDurationSeconds, setContextDurationSeconds] = useState(null);
   const [contextWarning, setContextWarning] = useState(null);
   const [contextStatus, setContextStatus] = useState("idle");
   const [contextCommitted, setContextCommitted] = useState(false);
@@ -73,11 +54,7 @@ export default function App() {
     setContextFilename("");
     setContextPageCount(null);
     setContextWordCount(null);
-    setContextLanguage(null);
-    setContextPreviewLines([]);
-    setContextDurationSeconds(null);
     setContextWarning(null);
-    setContextKind(null);
     setContextStatus("idle");
   }, []);
 
@@ -90,8 +67,7 @@ export default function App() {
 
   const loadSessions = useCallback(async () => {
     try {
-      const data = await getSessions();
-      setSessions(data);
+      setSessions(await getSessions());
     } catch (err) {
       setError(err.message);
     }
@@ -116,15 +92,9 @@ export default function App() {
       setSelectedModel(data.model);
 
       let loadedMessages = data.messages;
-      if (
-        (data.context_type === "pdf" ||
-          data.context_type === "audio" ||
-          data.context_type === "video") &&
-        data.context_filename
-      ) {
-        loadedMessages = enrichMessagesWithContextAttachment(
+      if (data.context_type === "pdf" && data.context_filename) {
+        loadedMessages = enrichMessagesWithPdfAttachment(
           data.messages,
-          data.context_type,
           data.context_filename,
           data.context_text,
         );
@@ -145,45 +115,28 @@ export default function App() {
     if (!window.confirm("Deseja apagar esta conversa?")) return;
     try {
       await deleteSession(sessionId);
-      if (currentSessionId === sessionId) {
-        handleNewChat();
-      }
+      if (currentSessionId === sessionId) handleNewChat();
       await loadSessions();
     } catch (err) {
       setError(err.message);
     }
   };
 
-  const applyContextReady = async ({
-    type,
-    text,
-    filename,
-    pageCount,
-    wordCount,
-    language,
-    previewLines,
-    warning,
-    durationSeconds,
-  }) => {
+  const handlePdfExtracted = async (payload) => {
     if (contextCommitted) return;
-
-    setContextText(text);
-    setContextFilename(filename);
-    setContextKind(type);
-    setContextPageCount(pageCount ?? null);
-    setContextWordCount(wordCount ?? null);
-    setContextLanguage(language ?? null);
-    setContextPreviewLines(previewLines ?? []);
-    setContextDurationSeconds(durationSeconds ?? null);
-    setContextWarning(warning ?? null);
+    setContextText(payload.text);
+    setContextFilename(payload.filename);
+    setContextPageCount(payload.pageCount);
+    setContextWordCount(payload.wordCount);
+    setContextWarning(payload.warning ?? null);
     setContextStatus("ready");
 
     if (currentSessionId) {
       try {
         await setSessionContext(currentSessionId, {
-          contextText: text,
-          contextFilename: filename,
-          contextType: type,
+          contextText: payload.text,
+          contextFilename: payload.filename,
+          contextType: "pdf",
         });
       } catch (err) {
         setError(err.message);
@@ -191,45 +144,8 @@ export default function App() {
     }
   };
 
-  const handlePdfExtracted = (payload) => {
-    applyContextReady({
-      type: "pdf",
-      text: payload.text,
-      filename: payload.filename,
-      pageCount: payload.pageCount,
-      wordCount: payload.wordCount,
-      warning: payload.warning,
-    });
-  };
-
-  const handleAudioTranscribed = (payload) => {
-    applyContextReady({
-      type: "audio",
-      text: payload.text,
-      filename: payload.filename,
-      wordCount: payload.wordCount,
-      language: payload.language,
-      previewLines: payload.previewLines,
-      warning: payload.warning,
-    });
-  };
-
-  const handleVideoTranscribed = (payload) => {
-    applyContextReady({
-      type: "video",
-      text: payload.text,
-      filename: payload.filename,
-      wordCount: payload.wordCount,
-      language: payload.language,
-      previewLines: payload.previewLines,
-      warning: payload.warning,
-      durationSeconds: payload.durationSeconds,
-    });
-  };
-
   const handleRemoveContext = async () => {
     if (contextCommitted) return;
-
     if (currentSessionId) {
       try {
         await clearSessionContext(currentSessionId);
@@ -243,15 +159,7 @@ export default function App() {
   };
 
   const handleSendMessage = async (text) => {
-    if (
-      contextStatus === "loading" ||
-      contextStatus === "transcribing" ||
-      contextStatus === "uploading" ||
-      contextStatus === "extracting"
-    ) {
-      return;
-    }
-
+    if (contextStatus === "loading") return;
     setError(null);
 
     const hasDraftContext =
@@ -259,18 +167,12 @@ export default function App() {
 
     const attachmentForMessage = hasDraftContext
       ? {
-          type: contextKind,
+          type: "pdf",
           filename: contextFilename,
           pageCount: contextPageCount,
           wordCount: contextWordCount,
-          language: contextLanguage,
-          durationSeconds: contextDurationSeconds,
         }
       : null;
-
-    const contextTextForApi = hasDraftContext ? contextText : null;
-    const contextFilenameForApi = hasDraftContext ? contextFilename : undefined;
-    const contextTypeForApi = hasDraftContext ? contextKind : undefined;
 
     const userMessage = {
       id: Date.now(),
@@ -281,17 +183,15 @@ export default function App() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
-
     if (attachmentForMessage) {
       clearDraftAttachment();
       setContextCommitted(true);
     }
-
     setIsLoading(true);
 
     const isFirstMessage = messages.length === 0;
     const pendingContext =
-      contextTextForApi && isFirstMessage && !currentSessionId ? contextTextForApi : null;
+      hasDraftContext && isFirstMessage && !currentSessionId ? contextText : null;
 
     try {
       const response = await sendChat({
@@ -299,34 +199,30 @@ export default function App() {
         message: text,
         model: selectedModel,
         contextText: pendingContext,
-        contextFilename: pendingContext ? contextFilenameForApi : undefined,
-        contextType: pendingContext ? contextTypeForApi : undefined,
+        contextFilename: pendingContext ? contextFilename : undefined,
+        contextType: pendingContext ? "pdf" : undefined,
       });
 
-      const assistantMessage = {
-        id: Date.now() + 1,
-        role: "assistant",
-        content: response.reply,
-        created_at: new Date().toISOString(),
-      };
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now() + 1,
+          role: "assistant",
+          content: response.reply,
+          created_at: new Date().toISOString(),
+        },
+      ]);
 
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      if (!currentSessionId) {
-        setCurrentSessionId(response.session_id);
-      }
-
+      if (!currentSessionId) setCurrentSessionId(response.session_id);
       await loadSessions();
     } catch (err) {
       setError(err.message);
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
       if (attachmentForMessage) {
-        setContextText(contextTextForApi);
-        setContextFilename(contextFilenameForApi);
-        setContextKind(contextTypeForApi);
-        setContextPageCount(attachmentForMessage.pageCount);
-        setContextWordCount(attachmentForMessage.wordCount);
-        setContextLanguage(attachmentForMessage.language);
+        setContextText(contextText);
+        setContextFilename(contextFilename);
+        setContextPageCount(contextPageCount);
+        setContextWordCount(contextWordCount);
         setContextStatus("ready");
         setContextCommitted(false);
       }
@@ -337,9 +233,7 @@ export default function App() {
 
   const handleModelChange = (model) => {
     if (messages.length > 0 || contextStatus === "ready") {
-      if (!window.confirm("Trocar de modelo iniciará uma nova conversa. Continuar?")) {
-        return;
-      }
+      if (!window.confirm("Trocar de modelo iniciará uma nova conversa. Continuar?")) return;
       handleNewChat();
     }
     setSelectedModel(model);
@@ -355,49 +249,15 @@ export default function App() {
     }
   };
 
-  const handleAudioProgress = (msg) => {
-    if (msg) {
-      setContextStatus("transcribing");
-      setStatusMessage(msg);
-    } else if (contextStatus === "transcribing") {
-      setContextStatus("idle");
-      setStatusMessage(null);
-    }
-  };
-
-  const handleVideoProgress = (msg) => {
-    if (msg) {
-      if (msg.startsWith("Enviando")) setContextStatus("uploading");
-      else if (msg.includes("Etapa 1")) setContextStatus("extracting");
-      else setContextStatus("transcribing");
-      setStatusMessage(msg);
-    } else if (
-      contextStatus === "uploading" ||
-      contextStatus === "extracting" ||
-      contextStatus === "transcribing"
-    ) {
-      setContextStatus("idle");
-      setStatusMessage(null);
-    }
-  };
-
-  const inputDisabled =
-    isLoading ||
-    contextStatus === "loading" ||
-    contextStatus === "transcribing" ||
-    contextStatus === "uploading" ||
-    contextStatus === "extracting";
+  const inputDisabled = isLoading || contextStatus === "loading";
 
   const pendingAttachment =
     !contextCommitted && contextStatus === "ready" && contextFilename
       ? {
-          type: contextKind,
+          type: "pdf",
           filename: contextFilename,
           pageCount: contextPageCount,
           wordCount: contextWordCount,
-          language: contextLanguage,
-          previewLines: contextPreviewLines,
-          durationSeconds: contextDurationSeconds,
           warning: contextWarning,
         }
       : null;
@@ -415,7 +275,7 @@ export default function App() {
         <header className="chat-header">
           <div className="chat-header-left">
             <h1>Assistente IA Local</h1>
-            <p>{activeTheme?.hint || "Chat local com Ollama"} · Fase 4: PDF + Áudio + Vídeo</p>
+            <p>{activeTheme?.hint || "Chat local com Ollama"} · Fase 2: PDF</p>
           </div>
           <div className="header-controls">
             <ThemeSelector />
@@ -441,12 +301,8 @@ export default function App() {
           contextCommitted={contextCommitted}
           pendingAttachment={pendingAttachment}
           onPdfExtracted={handlePdfExtracted}
-          onAudioTranscribed={handleAudioTranscribed}
-          onVideoTranscribed={handleVideoTranscribed}
           onRemoveContext={handleRemoveContext}
           onPdfProgress={handlePdfProgress}
-          onAudioProgress={handleAudioProgress}
-          onVideoProgress={handleVideoProgress}
         />
       </main>
     </div>

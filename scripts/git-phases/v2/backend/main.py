@@ -1,11 +1,9 @@
-import asyncio
 import logging
 import os
-import threading
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
@@ -31,8 +29,6 @@ from llm import (
     is_valid_user_name,
 )
 from memory import build_messages_array
-import transcription
-import video
 from schemas import (
     ChatRequest,
     ChatResponse,
@@ -42,14 +38,13 @@ from schemas import (
     SessionContextResponse,
     SessionDetail,
     SessionInfo,
-    TranscribeResponse,
 )
 
 load_dotenv()
 
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 
-app = FastAPI(title="Assistente IA Local", version="1.0.0")
+app = FastAPI(title="Assistente IA Local", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -59,7 +54,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -68,8 +62,6 @@ def on_startup():
     data_dir = Path(__file__).parent / "data"
     data_dir.mkdir(exist_ok=True)
     init_db()
-    transcription.cleanup_orphan_temp_files()
-    threading.Thread(target=transcription.load_whisper_model, daemon=True).start()
 
 
 def _generate_title(message: str) -> str:
@@ -97,11 +89,10 @@ async def chat(
         if not session:
             raise HTTPException(status_code=404, detail="Sessão não encontrada")
         if request.context_text and not session.context_text:
-            context_type = request.context_type or "pdf"
             update_session_context(
                 db,
                 session.id,
-                context_type,
+                request.context_type or "pdf",
                 request.context_text,
                 request.context_filename or "documento.pdf",
             )
@@ -117,7 +108,7 @@ async def chat(
                 session.id,
                 context_type,
                 request.context_text,
-                request.context_filename or "contexto",
+                request.context_filename or "documento.pdf",
             )
             session = get_session(db, session.id)
 
@@ -207,136 +198,6 @@ def remove_session_context(session_id: str, db: Session = Depends(get_db)):
     if not session:
         raise HTTPException(status_code=404, detail="Sessão não encontrada")
     clear_session_context(db, session_id)
-
-
-@app.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe_audio_endpoint(file: UploadFile = File(...)):
-    if not transcription.is_whisper_ready():
-        transcription.load_whisper_model()
-    if not transcription.is_whisper_ready():
-        raise HTTPException(
-            status_code=503,
-            detail="Serviço de transcrição indisponível. Verifique Whisper e FFmpeg.",
-        )
-
-    filename = file.filename or "audio"
-    ext = Path(filename).suffix.lower()
-    if ext not in transcription.ALLOWED_AUDIO_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail="Formato não suportado. Use .mp3 ou .mp4",
-        )
-
-    content = await file.read()
-    if len(content) > transcription.MAX_FILE_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail="Arquivo muito grande. Máximo de 100 MB.",
-        )
-    if not content:
-        raise HTTPException(status_code=422, detail="Arquivo de áudio vazio.")
-
-    temp_path = transcription.save_temp_file(filename, content)
-    try:
-        result = await asyncio.to_thread(transcription.transcribe_audio, temp_path)
-    except RuntimeError as exc:
-        msg = str(exc)
-        if "FFmpeg" in msg:
-            raise HTTPException(status_code=500, detail=msg) from exc
-        if "indisponível" in msg:
-            raise HTTPException(status_code=503, detail=msg) from exc
-        raise HTTPException(status_code=422, detail=msg) from exc
-    except Exception as exc:
-        logger.exception("Erro na transcrição")
-        raise HTTPException(
-            status_code=422,
-            detail="Não foi possível processar o arquivo de áudio.",
-        ) from exc
-    finally:
-        transcription.delete_temp_file(temp_path)
-
-    return TranscribeResponse(
-        text=result["text"],
-        language=result["language"],
-        filename=filename,
-        word_count=result["word_count"],
-        duration_seconds=result["duration_seconds"],
-        truncated=result["truncated"],
-        warning=result["warning"],
-        preview_lines=result["preview_lines"],
-    )
-
-
-@app.post("/transcribe-video", response_model=TranscribeResponse)
-async def transcribe_video_endpoint(file: UploadFile = File(...)):
-    if not transcription.is_whisper_ready():
-        transcription.load_whisper_model()
-    if not transcription.is_whisper_ready():
-        raise HTTPException(
-            status_code=503,
-            detail="Serviço de transcrição indisponível. Verifique Whisper e FFmpeg.",
-        )
-
-    filename = file.filename or "video.mp4"
-    ext = Path(filename).suffix.lower()
-    if ext != video.VIDEO_EXTENSION:
-        raise HTTPException(
-            status_code=400,
-            detail="Formato não suportado. Use .mp4",
-        )
-
-    content = await file.read()
-    if len(content) > video.MAX_VIDEO_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail="Arquivo muito grande. Máximo de 500 MB.",
-        )
-    if not content:
-        raise HTTPException(status_code=422, detail="Arquivo de vídeo vazio.")
-
-    temp_video_path = transcription.save_temp_file(filename, content)
-    audio_path = None
-    video_deleted = False
-
-    try:
-        video_duration = await asyncio.to_thread(video.get_video_duration, temp_video_path)
-
-        audio_path = await asyncio.to_thread(video.extract_audio_from_video, temp_video_path)
-        transcription.delete_temp_file(temp_video_path)
-        video_deleted = True
-
-        result = await asyncio.to_thread(transcription.transcribe_audio, audio_path)
-    except RuntimeError as exc:
-        msg = str(exc)
-        if "FFmpeg" in msg:
-            raise HTTPException(status_code=500, detail=msg) from exc
-        if "indisponível" in msg:
-            raise HTTPException(status_code=503, detail=msg) from exc
-        raise HTTPException(status_code=422, detail=msg) from exc
-    except Exception as exc:
-        logger.exception("Erro ao processar vídeo")
-        raise HTTPException(
-            status_code=422,
-            detail="Não foi possível processar o arquivo de vídeo.",
-        ) from exc
-    finally:
-        if not video_deleted:
-            transcription.delete_temp_file(temp_video_path)
-        if audio_path is not None:
-            transcription.delete_temp_file(audio_path)
-
-    duration = video_duration or result.get("duration_seconds", 0)
-
-    return TranscribeResponse(
-        text=result["text"],
-        language=result["language"],
-        filename=filename,
-        word_count=result["word_count"],
-        duration_seconds=duration,
-        truncated=result["truncated"],
-        warning=result["warning"],
-        preview_lines=result["preview_lines"],
-    )
 
 
 if __name__ == "__main__":
