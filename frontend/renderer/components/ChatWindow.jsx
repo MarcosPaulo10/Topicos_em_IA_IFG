@@ -4,13 +4,14 @@ import StatusBar from "./StatusBar.jsx";
 
 const SUGGESTIONS = [
   "Olá! Como você pode me ajudar?",
-  "Me chame de João e diga oi.",
-  "Explique o que é inteligência artificial.",
+  "Qual é o tema principal deste documento?",
+  "Resuma o conteúdo em tópicos.",
 ];
 
 export default function ChatWindow({
   messages,
   isLoading,
+  statusMessage,
   onSuggestionClick,
   suggestionDisabled,
 }) {
@@ -18,18 +19,21 @@ export default function ChatWindow({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isLoading]);
+  }, [messages, isLoading, statusMessage]);
 
   return (
     <div className="chat-window">
       <div className="chat-window-inner">
-        {messages.length === 0 && !isLoading && (
+        {statusMessage && !isLoading && (
+          <div className="pdf-status-banner">{statusMessage}</div>
+        )}
+        {messages.length === 0 && !isLoading && !statusMessage && (
           <div className="welcome">
             <div className="welcome-card">
               <h2>Bem-vindo</h2>
               <p>
-                Converse com LLaMA 3 ou Phi-3 localmente. Suas conversas ficam salvas
-                no SQLite desta máquina.
+                Converse com LLaMA 3 ou Phi-3 localmente. Anexe um PDF para perguntar
+                sobre o conteúdo do documento.
               </p>
               <div className="suggestions">
                 {SUGGESTIONS.map((s) => (

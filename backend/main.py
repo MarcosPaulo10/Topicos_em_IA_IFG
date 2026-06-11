@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from database import (
+    clear_session_context,
     create_session,
     delete_session,
     get_db,
@@ -16,6 +17,7 @@ from database import (
     init_db,
     list_sessions,
     save_message,
+    update_session_context,
     update_user_name,
 )
 from llm import (
@@ -32,6 +34,8 @@ from schemas import (
     ChatResponse,
     HealthResponse,
     MessageInfo,
+    SessionContextRequest,
+    SessionContextResponse,
     SessionDetail,
     SessionInfo,
 )
@@ -40,7 +44,7 @@ load_dotenv()
 
 APP_PORT = int(os.getenv("APP_PORT", "8000"))
 
-app = FastAPI(title="Assistente IA Local", version="1.0.0")
+app = FastAPI(title="Assistente IA Local", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -84,9 +88,29 @@ async def chat(
         session = get_session(db, request.session_id)
         if not session:
             raise HTTPException(status_code=404, detail="Sessão não encontrada")
+        if request.context_text and not session.context_text:
+            update_session_context(
+                db,
+                session.id,
+                request.context_type or "pdf",
+                request.context_text,
+                request.context_filename or "documento.pdf",
+            )
+            session = get_session(db, session.id)
     else:
         title = _generate_title(request.message)
-        session = create_session(db, request.model, title)
+        context_type = request.context_type or ("pdf" if request.context_text else "chat")
+        session = create_session(db, request.model, title, context_type=context_type)
+
+        if request.context_text:
+            update_session_context(
+                db,
+                session.id,
+                context_type,
+                request.context_text,
+                request.context_filename or "documento.pdf",
+            )
+            session = get_session(db, session.id)
 
     messages_array, brief = build_messages_array(db, session, request.message)
 
@@ -133,6 +157,7 @@ def get_session_detail(session_id: str, db: Session = Depends(get_db)):
         user_name=session.user_name,
         context_type=session.context_type,
         context_filename=session.context_filename,
+        context_text=session.context_text,
         updated_at=session.updated_at,
         messages=[MessageInfo.model_validate(m) for m in session.messages],
     )
@@ -142,6 +167,37 @@ def get_session_detail(session_id: str, db: Session = Depends(get_db)):
 def remove_session(session_id: str, db: Session = Depends(get_db)):
     if not delete_session(db, session_id):
         raise HTTPException(status_code=404, detail="Sessão não encontrada")
+
+
+@app.post("/sessions/{session_id}/context", response_model=SessionContextResponse)
+def set_session_context(
+    session_id: str,
+    body: SessionContextRequest,
+    db: Session = Depends(get_db),
+):
+    session = get_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+    update_session_context(
+        db,
+        session_id,
+        body.context_type,
+        body.context_text,
+        body.context_filename,
+    )
+    return SessionContextResponse(
+        id=session_id,
+        context_type=body.context_type,
+        context_filename=body.context_filename,
+    )
+
+
+@app.delete("/sessions/{session_id}/context", status_code=204)
+def remove_session_context(session_id: str, db: Session = Depends(get_db)):
+    session = get_session(db, session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sessão não encontrada")
+    clear_session_context(db, session_id)
 
 
 if __name__ == "__main__":

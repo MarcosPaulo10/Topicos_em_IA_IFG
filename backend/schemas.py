@@ -7,6 +7,9 @@ class ChatRequest(BaseModel):
     session_id: str | None = None
     message: str
     model: str = "phi3"
+    context_text: str | None = None
+    context_filename: str | None = None
+    context_type: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -43,6 +46,7 @@ class SessionDetail(BaseModel):
     user_name: str | None
     context_type: str
     context_filename: str | None = None
+    context_text: str | None = None
     updated_at: datetime
     messages: list[MessageInfo] = Field(default_factory=list)
 
@@ -51,3 +55,16 @@ class SessionDetail(BaseModel):
 
 class HealthResponse(BaseModel):
     status: str
+
+
+class SessionContextRequest(BaseModel):
+    context_type: str = "pdf"
+    context_text: str
+    context_filename: str
+
+
+class SessionContextResponse(BaseModel):
+    id: str
+    context_type: str
+    context_filename: str | None
+    message: str = "Contexto atualizado"

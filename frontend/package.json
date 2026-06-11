@@ -4,11 +4,13 @@
   "description": "Assistente de IA local com Electron, React e FastAPI",
   "main": "main.js",
   "scripts": {
+    "copy-pdfjs": "node scripts/copy-pdfjs-assets.mjs",
+    "postinstall": "node scripts/copy-pdfjs-assets.mjs",
     "dev:backend": "cd ..\\backend && venv\\Scripts\\python.exe -m uvicorn main:app --reload --host 127.0.0.1 --port 8000",
     "dev:vite": "vite",
     "dev:app": "wait-on http-get://127.0.0.1:8000/health http://localhost:5173 && cross-env NODE_ENV=development electron .",
     "dev": "concurrently -k -n backend,vite,electron -c blue,green,yellow \"npm run dev:backend\" \"npm run dev:vite\" \"npm run dev:app\"",
-    "build:renderer": "vite build",
+    "build:renderer": "npm run copy-pdfjs && vite build",
     "build": "npm run build:renderer",
     "start": "electron ."
   },
@@ -17,6 +19,7 @@
   "license": "ISC",
   "dependencies": {
     "electron": "^35.0.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0"
