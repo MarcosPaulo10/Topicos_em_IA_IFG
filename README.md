@@ -31,8 +31,8 @@ Instale uma vez na máquina:
 ### 1. Clonar o repositório
 
 ```powershell
-git clone <url-do-repositorio>
-cd IA_Local
+git clone https://github.com/MarcosPaulo10/Topicos_em_IA_IFG.git
+cd Topicos_em_IA_IFG
 ```
 
 ### 2. Instalar e baixar modelos Ollama
@@ -134,6 +134,8 @@ O app desktop inicia o FastAPI automaticamente e aguarda o endpoint `/health` an
 - Seletor de modelo (fixo por sessão)
 - 3 temas visuais (Museum, Glass, Future)
 
+![Fase 1 — chat local com memória e sidebar](docs/screenshots/fase1-chat-conversa.png)
+
 ## Funcionalidades — Fase 2
 
 - Upload de PDF na interface (extração local com PDF.js — arquivo não vai ao servidor)
@@ -149,6 +151,8 @@ O app desktop inicia o FastAPI automaticamente e aguarda o endpoint `/health` an
 2. Aguarde a extração (progresso por página)
 3. Envie uma pergunta sobre o documento
 4. A IA usa o texto extraído como contexto da sessão
+
+![Fase 2 — PDF anexado e resposta da IA](docs/screenshots/fase2-pdf-anexo-resposta.png)
 
 ## Funcionalidades — Fase 3
 
@@ -178,6 +182,8 @@ pip install -r requirements.txt
 
 Na primeira execução, o Whisper baixa o modelo `small` (~461 MB) para `~/.cache/whisper/`.
 
+![Fase 3 — áudio transcrito e pergunta respondida](docs/screenshots/fase3-audio-transcricao.png)
+
 ## Funcionalidades — Fase 4
 
 - Upload de vídeo `.mp4` (até 500 MB)
@@ -195,14 +201,17 @@ Na primeira execução, o Whisper baixa o modelo `small` (~461 MB) para `~/.cach
 
 Recomendado: vídeos de até **15 minutos** para tempo de processamento razoável em CPU.
 
+![Fase 4 — vídeo processado e resposta da IA](docs/screenshots/fase4-video-processamento.png)
+
 ---
 
 ## Estrutura do projeto
 
 ```
-IA_Local/
-├── backend/          ← FastAPI + SQLite + Ollama
-├── frontend/         ← React (interface) + Electron (janela desktop)
+Topicos_em_IA_IFG/
+├── backend/              ← FastAPI + SQLite + Ollama
+├── frontend/             ← React (interface) + Electron (janela desktop)
+├── docs/screenshots/     ← prints das fases (README)
 └── README.md
 ```
 
@@ -222,10 +231,11 @@ IA_Local/
 
 ---
 
-## Próximas fases
+## Fases entregues
 
 | Fase | Tag | Funcionalidade |
 |---|---|---|
+| 1 | v1.0 | Chat local com memória ✓ |
 | 2 | v2.0 | Chat com PDF ✓ |
 | 3 | v3.0 | Chat com áudio (Whisper) ✓ |
 | 4 | v4.0 | Chat com vídeo (FFmpeg + Whisper) ✓ |
